@@ -35,7 +35,8 @@ spec:
               protocol: TCP
           env:
             - name: ENVOY_ADDRESS
-              value: "https://192.168.42.7"
+              # Use IP if mDNS (envoy.local) doesn't resolve in your cluster
+              value: "https://envoy.local"
             - name: ENVOY_SERIAL
               valueFrom:
                 secretKeyRef:
