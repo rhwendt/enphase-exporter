@@ -194,13 +194,10 @@ func validateConfig() error {
 		return errMissingConfig("ENVOY_SERIAL")
 	}
 
-	// Need either JWT or username/password
+	// JWT is required - generate at https://entrez.enphaseenergy.com
 	jwt := viper.GetString("envoy.jwt")
-	username := viper.GetString("envoy.username")
-	password := viper.GetString("envoy.password")
-
-	if jwt == "" && (username == "" || password == "") {
-		return errMissingConfig("ENVOY_JWT or ENVOY_USERNAME/ENVOY_PASSWORD")
+	if jwt == "" {
+		return errMissingConfig("ENVOY_JWT (generate at https://entrez.enphaseenergy.com)")
 	}
 
 	return nil
