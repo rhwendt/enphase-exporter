@@ -1,0 +1,21 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: enphase-exporter
+  labels:
+    app.kubernetes.io/name: enphase-exporter
+    app.kubernetes.io/component: exporter
+    # Add your Prometheus selector label here
+    # release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: enphase-exporter
+  endpoints:
+    - port: http-metrics
+      interval: 30s
+      scrapeTimeout: 10s
+      path: /metrics
+  namespaceSelector:
+    matchNames:
+      - monitoring  # Update to your namespace

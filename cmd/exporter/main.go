@@ -1,8 +1,12 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -13,13 +17,27 @@ import (
 	"github.com/rhwendt/enphase-exporter/internal/collector"
 )
 
-var log = logrus.New()
+var (
+	// Version information (set via ldflags at build time)
+	Version   = "dev"
+	GitCommit = "unknown"
+	BuildDate = "unknown"
+
+	log = logrus.New()
+
+	// Global client reference for readiness checks
+	envoyClient *client.Client
+)
 
 func main() {
 	// Configure logging
-	log.SetFormatter(&logrus.TextFormatter{
-		FullTimestamp: true,
-	})
+	configureLogging()
+
+	log.WithFields(logrus.Fields{
+		"version": Version,
+		"commit":  GitCommit,
+		"built":   BuildDate,
+	}).Info("Starting Enphase Exporter")
 
 	// Load configuration
 	if err := loadConfig(); err != nil {
@@ -32,7 +50,8 @@ func main() {
 	}
 
 	// Create Enphase client
-	envoyClient, err := client.New(client.Config{
+	var err error
+	envoyClient, err = client.New(client.Config{
 		Address:  viper.GetString("envoy.address"),
 		Serial:   viper.GetString("envoy.serial"),
 		Username: viper.GetString("envoy.username"),
@@ -42,6 +61,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create Enphase client: %v", err)
 	}
+
+	log.WithFields(logrus.Fields{
+		"address": viper.GetString("envoy.address"),
+		"serial":  viper.GetString("envoy.serial"),
+	}).Info("Configured Enphase gateway connection")
 
 	// Create and register collectors
 	productionCollector := collector.NewProductionCollector(envoyClient)
@@ -53,22 +77,88 @@ func main() {
 	invertersCollector := collector.NewInvertersCollector(envoyClient)
 	prometheus.MustRegister(invertersCollector)
 
+	// Register build info metric
+	buildInfo := prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "enphase_exporter_build_info",
+			Help: "Build information for the enphase exporter",
+		},
+		[]string{"version", "commit", "built"},
+	)
+	prometheus.MustRegister(buildInfo)
+	buildInfo.WithLabelValues(Version, GitCommit, BuildDate).Set(1)
+
 	// Set up HTTP server
 	port := viper.GetString("exporter.port")
 	if port == "" {
 		port = "9090"
 	}
 
-	http.Handle("/metrics", promhttp.Handler())
-	http.HandleFunc("/health", healthHandler)
-	http.HandleFunc("/ready", readyHandler)
-	http.HandleFunc("/", rootHandler)
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.Handler())
+	mux.HandleFunc("/health", healthHandler)
+	mux.HandleFunc("/ready", readyHandler)
+	mux.HandleFunc("/", rootHandler)
 
-	log.Infof("Starting Enphase Exporter on :%s", port)
-	log.Infof("Metrics available at http://localhost:%s/metrics", port)
+	server := &http.Server{
+		Addr:         ":" + port,
+		Handler:      mux,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
 
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
-		log.Fatalf("HTTP server failed: %v", err)
+	// Start server in goroutine
+	go func() {
+		log.Infof("Listening on :%s", port)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("HTTP server failed: %v", err)
+		}
+	}()
+
+	// Wait for shutdown signal
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	sig := <-quit
+
+	log.WithField("signal", sig.String()).Info("Shutting down server")
+
+	// Graceful shutdown with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(ctx); err != nil {
+		log.WithError(err).Error("Server forced to shutdown")
+	}
+
+	log.Info("Server exited")
+}
+
+func configureLogging() {
+	// Use JSON formatter for K8s log aggregation
+	logFormat := os.Getenv("LOG_FORMAT")
+	if logFormat == "json" {
+		log.SetFormatter(&logrus.JSONFormatter{
+			TimestampFormat: time.RFC3339,
+		})
+	} else {
+		log.SetFormatter(&logrus.TextFormatter{
+			FullTimestamp:   true,
+			TimestampFormat: time.RFC3339,
+		})
+	}
+
+	// Set log level from environment
+	level := os.Getenv("LOG_LEVEL")
+	switch level {
+	case "debug":
+		log.SetLevel(logrus.DebugLevel)
+	case "warn":
+		log.SetLevel(logrus.WarnLevel)
+	case "error":
+		log.SetLevel(logrus.ErrorLevel)
+	default:
+		log.SetLevel(logrus.InfoLevel)
 	}
 }
 
@@ -128,14 +218,21 @@ func errMissingConfig(field string) error {
 	return &configError{field: field}
 }
 
+// healthHandler returns OK if the server is running (liveness probe).
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("OK"))
 }
 
+// readyHandler returns OK only if the client has authenticated (readiness probe).
 func readyHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Ready"))
+	if envoyClient != nil && envoyClient.IsReady() {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Ready"))
+		return
+	}
+	w.WriteHeader(http.StatusServiceUnavailable)
+	w.Write([]byte("Not Ready"))
 }
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {
@@ -145,24 +242,10 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 <head><title>Enphase Exporter</title></head>
 <body>
 <h1>Enphase Prometheus Exporter</h1>
+<p>Version: ` + Version + `</p>
 <p><a href="/metrics">Metrics</a></p>
-<p><a href="/health">Health</a></p>
-<p><a href="/ready">Ready</a></p>
+<p><a href="/health">Health</a> (liveness probe)</p>
+<p><a href="/ready">Ready</a> (readiness probe)</p>
 </body>
 </html>`))
-}
-
-func init() {
-	// Set log level from environment
-	level := os.Getenv("LOG_LEVEL")
-	switch level {
-	case "debug":
-		log.SetLevel(logrus.DebugLevel)
-	case "warn":
-		log.SetLevel(logrus.WarnLevel)
-	case "error":
-		log.SetLevel(logrus.ErrorLevel)
-	default:
-		log.SetLevel(logrus.InfoLevel)
-	}
 }

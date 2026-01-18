@@ -1,0 +1,38 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test files
+*_test.go
+*.test
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# Kubernetes manifests (not needed in image)
+deploy/kubernetes/
+
+# Local development
+.env
+.env.*
+docker-compose*.yaml
+
+# Temporary files
+tmp/
+*.tmp
+*.log

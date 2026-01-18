@@ -2,12 +2,18 @@ package client
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/cookiejar"
 	"sync"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
+
+var clientLog = logrus.WithField("component", "client")
 
 // Config holds the configuration for the Enphase client.
 type Config struct {
@@ -25,6 +31,7 @@ type Client struct {
 	sessionID  string
 	sessionExp time.Time
 	mu         sync.RWMutex
+	ready      bool
 }
 
 // New creates a new Enphase client.
@@ -59,14 +66,33 @@ func (c *Client) Address() string {
 	return c.config.Address
 }
 
+// IsReady returns true if the client has successfully authenticated.
+// Used for K8s readiness probes.
+func (c *Client) IsReady() bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.ready && c.isSessionValid()
+}
+
 // GetProduction fetches production data from the gateway.
 func (c *Client) GetProduction() (*ProductionResponse, error) {
 	if err := c.ensureAuthenticated(); err != nil {
 		return nil, err
 	}
 
-	// TODO: Implement API call
-	return nil, fmt.Errorf("not implemented")
+	url := c.config.Address + EndpointProductionDetails
+	resp, err := c.doRequest("GET", url)
+	if err != nil {
+		return nil, fmt.Errorf("production request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var result ProductionResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode production response: %w", err)
+	}
+
+	return &result, nil
 }
 
 // GetMeterReadings fetches meter readings from the gateway.
@@ -75,8 +101,19 @@ func (c *Client) GetMeterReadings() (*MeterReadingsResponse, error) {
 		return nil, err
 	}
 
-	// TODO: Implement API call
-	return nil, fmt.Errorf("not implemented")
+	url := c.config.Address + EndpointMeterReadings
+	resp, err := c.doRequest("GET", url)
+	if err != nil {
+		return nil, fmt.Errorf("meter readings request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var result MeterReadingsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode meter readings response: %w", err)
+	}
+
+	return &result, nil
 }
 
 // GetInverters fetches inverter data from the gateway.
@@ -85,8 +122,40 @@ func (c *Client) GetInverters() (*InvertersResponse, error) {
 		return nil, err
 	}
 
-	// TODO: Implement API call
-	return nil, fmt.Errorf("not implemented")
+	url := c.config.Address + EndpointInverters
+	resp, err := c.doRequest("GET", url)
+	if err != nil {
+		return nil, fmt.Errorf("inverters request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var result InvertersResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode inverters response: %w", err)
+	}
+
+	return &result, nil
+}
+
+// doRequest performs an HTTP request with proper error handling.
+func (c *Client) doRequest(method, url string) (*http.Response, error) {
+	req, err := http.NewRequest(method, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		return nil, fmt.Errorf("request returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	return resp, nil
 }
 
 // ensureAuthenticated ensures we have a valid session.
@@ -94,20 +163,17 @@ func (c *Client) ensureAuthenticated() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// Check if session is still valid (with 1 minute buffer)
-	if c.sessionID != "" && time.Now().Add(time.Minute).Before(c.sessionExp) {
+	// Check if session is still valid
+	if c.isSessionValid() {
 		return nil
 	}
 
 	// Need to authenticate
-	return c.authenticate()
-}
+	if err := c.authenticate(); err != nil {
+		c.ready = false
+		return err
+	}
 
-// authenticate performs the authentication flow.
-func (c *Client) authenticate() error {
-	// TODO: Implement authentication
-	// 1. If JWT provided, use it directly
-	// 2. Otherwise, get JWT from Enlighten using username/password
-	// 3. Call /auth/check_jwt to validate and get session cookie
+	c.ready = true
 	return nil
 }

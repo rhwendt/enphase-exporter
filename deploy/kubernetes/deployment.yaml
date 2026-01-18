@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: enphase-exporter
+  labels:
+    app.kubernetes.io/name: enphase-exporter
+    app.kubernetes.io/component: exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: enphase-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: enphase-exporter
+        app.kubernetes.io/component: exporter
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+      containers:
+        - name: enphase-exporter
+          image: ghcr.io/rhwendt/enphase-exporter:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http-metrics
+              containerPort: 9090
+              protocol: TCP
+          env:
+            - name: ENVOY_ADDRESS
+              value: "https://192.168.42.7"
+            - name: ENVOY_SERIAL
+              valueFrom:
+                secretKeyRef:
+                  name: enphase-exporter
+                  key: serial
+            - name: ENVOY_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: enphase-exporter
+                  key: username
+            - name: ENVOY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: enphase-exporter
+                  key: password
+            - name: LOG_FORMAT
+              value: "json"
+            - name: LOG_LEVEL
+              value: "info"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http-metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http-metrics
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
