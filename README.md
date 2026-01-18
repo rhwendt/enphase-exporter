@@ -6,23 +6,70 @@ A Prometheus exporter for Enphase IQ Gateway that exposes solar production metri
 
 - **Local API access** - No cloud dependency, real-time metrics
 - **Per-inverter metrics** - Monitor individual panel performance
+- **Production & consumption** - Track solar production and home consumption
+- **Net power** - See if you're exporting or importing from the grid
 - **Meter readings** - Voltage, current, power factor, frequency per phase
-- **Production totals** - Current watts and lifetime kWh
+- **Daily/weekly totals** - Production and consumption trends
 - **Kubernetes ready** - Includes Deployment, Service, and ServiceMonitor manifests
 
 ## Metrics
+
+### Production Metrics
 
 | Metric | Description | Labels |
 |--------|-------------|--------|
 | `enphase_production_watts` | Current production in watts | `device_type` |
 | `enphase_production_wh_total` | Lifetime production in Wh | `device_type` |
-| `enphase_production_voltage_volts` | Grid voltage | `device_type` |
+| `enphase_production_wh_today` | Production today in Wh | `device_type` |
+| `enphase_production_wh_last_seven_days` | Production last 7 days in Wh | `device_type` |
+| `enphase_production_voltage_volts` | RMS voltage | `device_type` |
+| `enphase_production_current_amps` | RMS current | `device_type` |
+| `enphase_production_power_factor` | Power factor | `device_type` |
+
+### Consumption Metrics
+
+Requires consumption CT clamps installed at your main panel.
+
+| Metric | Description | Labels |
+|--------|-------------|--------|
+| `enphase_consumption_watts` | Current consumption in watts | `measurement_type` |
+| `enphase_consumption_wh_total` | Lifetime consumption in Wh | `measurement_type` |
+| `enphase_consumption_wh_today` | Consumption today in Wh | `measurement_type` |
+| `enphase_consumption_wh_last_seven_days` | Consumption last 7 days in Wh | `measurement_type` |
+
+The `measurement_type` label distinguishes:
+- `total-consumption` - Total power consumed by your home
+- `net-consumption` - Consumption from the grid (excludes self-consumed solar)
+
+### Net Power
+
+| Metric | Description | Labels |
+|--------|-------------|--------|
+| `enphase_net_watts` | Net power (production - consumption). Positive = exporting, negative = importing | - |
+
+### Per-Inverter Metrics
+
+| Metric | Description | Labels |
+|--------|-------------|--------|
 | `enphase_inverter_watts` | Per-inverter current production | `serial_number` |
 | `enphase_inverter_max_watts` | Per-inverter max reported | `serial_number` |
+| `enphase_inverter_last_report_timestamp` | Unix timestamp of last report | `serial_number` |
+
+### Meter Metrics
+
+| Metric | Description | Labels |
+|--------|-------------|--------|
 | `enphase_active_power_watts` | Meter active power | `meter_id`, `phase` |
 | `enphase_current_amps` | Meter current | `meter_id`, `phase` |
 | `enphase_voltage_volts` | Meter voltage | `meter_id`, `phase` |
+| `enphase_power_factor` | Meter power factor | `meter_id`, `phase` |
 | `enphase_frequency_hz` | Grid frequency | `meter_id` |
+
+### Exporter Metrics
+
+| Metric | Description | Labels |
+|--------|-------------|--------|
+| `enphase_exporter_build_info` | Build information | `version`, `commit`, `built` |
 
 ## Quick Start
 
@@ -201,16 +248,11 @@ The ServiceMonitor will automatically configure Prometheus Operator to scrape me
 
 ## Architecture
 
-```
-┌─────────────────┐      ┌──────────────────┐      ┌─────────────┐
-│   Prometheus    │─────▶│ Enphase Exporter │─────▶│ IQ Gateway  │
-│                 │scrape│                  │ API  │ (local)     │
-└─────────────────┘      └──────────────────┘      └─────────────┘
-                                │
-                                ▼
-                         ┌─────────────┐
-                         │   Grafana   │
-                         └─────────────┘
+```mermaid
+flowchart LR
+    P[Prometheus] -->|scrape| E[Enphase Exporter]
+    E -->|API| G[IQ Gateway<br/>local]
+    P --> GF[Grafana]
 ```
 
 ## Authentication Flow

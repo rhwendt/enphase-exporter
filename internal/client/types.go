@@ -10,6 +10,7 @@ type ProductionResponse struct {
 // ProductionDevice represents a production device in the response.
 type ProductionDevice struct {
 	Type             string  `json:"type"`
+	MeasurementType  string  `json:"measurementType,omitempty"` // For consumption: "total-consumption" or "net-consumption"
 	ActiveCount      int     `json:"activeCount"`
 	ReadingTime      int64   `json:"readingTime"`
 	WNow             float64 `json:"wNow"`
