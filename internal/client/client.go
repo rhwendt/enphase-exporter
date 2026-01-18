@@ -36,6 +36,14 @@ type Client struct {
 
 // New creates a new Enphase client.
 func New(config Config) (*Client, error) {
+	// Validate required config
+	if config.Address == "" {
+		return nil, fmt.Errorf("address is required")
+	}
+	if config.Serial == "" {
+		return nil, fmt.Errorf("serial is required")
+	}
+
 	// Create cookie jar for session management
 	jar, err := cookiejar.New(nil)
 	if err != nil {

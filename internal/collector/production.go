@@ -143,6 +143,10 @@ func (c *ProductionCollector) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
+	if production == nil {
+		return
+	}
+
 	var totalProduction, totalConsumption float64
 
 	// Production metrics
