@@ -74,6 +74,98 @@ docker-compose up
 curl http://localhost:9090/metrics | grep enphase_
 ```
 
+## Docker Deployment
+
+### Option 1: Docker Run
+
+```bash
+# Build the image
+docker build -t enphase-exporter .
+
+# Run with environment variables
+docker run -d \
+  --name enphase-exporter \
+  --restart unless-stopped \
+  -p 9090:9090 \
+  -e ENVOY_ADDRESS=https://192.168.1.100 \
+  -e ENVOY_SERIAL=your-serial \
+  -e ENVOY_JWT=your-jwt-token \
+  enphase-exporter
+```
+
+### Option 2: Docker Compose
+
+Create a `docker-compose.yml`:
+
+```yaml
+version: '3.8'
+services:
+  enphase-exporter:
+    build: .
+    # Or use: image: ghcr.io/rhwendt/enphase-exporter:latest
+    container_name: enphase-exporter
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    environment:
+      - ENVOY_ADDRESS=https://192.168.1.100
+      - ENVOY_SERIAL=your-serial
+      - ENVOY_JWT=your-jwt-token
+      - LOG_LEVEL=info
+
+  # Optional: Add Prometheus to scrape the exporter
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./deploy/prometheus.yaml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+
+volumes:
+  prometheus_data:
+```
+
+Run:
+```bash
+docker-compose up -d
+```
+
+### Option 3: Using .env file
+
+```bash
+# Create .env from example
+cp .env.example .env
+# Edit .env with your values
+
+# Run with .env file
+docker run -d \
+  --name enphase-exporter \
+  --restart unless-stopped \
+  --env-file .env \
+  -p 9090:9090 \
+  enphase-exporter
+```
+
+### Health Checks
+
+The container exposes health endpoints:
+- `/health` - Liveness (is the process running?)
+- `/ready` - Readiness (is it authenticated and working?)
+
+```bash
+# Check if running
+curl http://localhost:9090/health
+
+# Check if authenticated
+curl http://localhost:9090/ready
+```
+
 ## Kubernetes Deployment
 
 ```bash
@@ -86,7 +178,7 @@ kubectl create secret generic enphase-exporter \
 kubectl apply -f deploy/kubernetes/
 ```
 
-The ServiceMonitor will automatically configure Prometheus to scrape metrics.
+The ServiceMonitor will automatically configure Prometheus Operator to scrape metrics.
 
 ## Configuration
 
