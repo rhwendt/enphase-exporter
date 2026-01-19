@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -66,6 +67,13 @@ func main() {
 		"address": viper.GetString("envoy.address"),
 		"serial":  viper.GetString("envoy.serial"),
 	}).Info("Configured Enphase gateway connection")
+
+	// Authenticate on startup with retry logic
+	// This ensures readiness probe passes and catches config issues early
+	if err := authenticateWithRetry(envoyClient, 5, 5*time.Second); err != nil {
+		log.Fatalf("Failed to authenticate with Enphase gateway: %v", err)
+	}
+	log.Info("Successfully authenticated with Enphase gateway")
 
 	// Create and register collectors
 	productionCollector := collector.NewProductionCollector(envoyClient)
@@ -213,6 +221,33 @@ func (e *configError) Error() string {
 
 func errMissingConfig(field string) error {
 	return &configError{field: field}
+}
+
+// authenticateWithRetry attempts to authenticate with exponential backoff.
+// This handles transient network issues during startup.
+func authenticateWithRetry(c *client.Client, maxRetries int, initialDelay time.Duration) error {
+	var lastErr error
+	delay := initialDelay
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		if err := c.Authenticate(); err != nil {
+			lastErr = err
+			log.WithFields(logrus.Fields{
+				"attempt": attempt,
+				"max":     maxRetries,
+				"error":   err.Error(),
+			}).Warn("Authentication attempt failed, retrying...")
+
+			if attempt < maxRetries {
+				time.Sleep(delay)
+				delay *= 2 // Exponential backoff
+			}
+			continue
+		}
+		return nil // Success
+	}
+
+	return fmt.Errorf("authentication failed after %d attempts: %w", maxRetries, lastErr)
 }
 
 // healthHandler returns OK if the server is running (liveness probe).
