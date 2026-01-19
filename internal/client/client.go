@@ -82,6 +82,12 @@ func (c *Client) IsReady() bool {
 	return c.ready && c.isSessionValid()
 }
 
+// Authenticate performs initial authentication with the gateway.
+// Call this on startup to ensure the exporter is ready before serving requests.
+func (c *Client) Authenticate() error {
+	return c.ensureAuthenticated()
+}
+
 // GetProduction fetches production data from the gateway.
 func (c *Client) GetProduction() (*ProductionResponse, error) {
 	if err := c.ensureAuthenticated(); err != nil {
