@@ -75,6 +75,9 @@ func main() {
 	}
 	log.Info("Successfully authenticated with Enphase gateway")
 
+	// Start proactive session refresh to prevent data gaps
+	envoyClient.StartSessionRefresh()
+
 	// Create and register collectors
 	productionCollector := collector.NewProductionCollector(envoyClient)
 	prometheus.MustRegister(productionCollector)
@@ -130,6 +133,9 @@ func main() {
 	sig := <-quit
 
 	log.WithField("signal", sig.String()).Info("Shutting down server")
+
+	// Stop session refresh goroutine
+	envoyClient.StopSessionRefresh()
 
 	// Graceful shutdown with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -257,14 +263,32 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // readyHandler returns OK only if the client has authenticated (readiness probe).
+// If the session has expired, it triggers re-authentication to prevent the pod
+// from becoming stuck in a not-ready state.
 func readyHandler(w http.ResponseWriter, r *http.Request) {
-	if envoyClient != nil && envoyClient.IsReady() {
+	if envoyClient == nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		w.Write([]byte("Client not initialized"))
+		return
+	}
+
+	// If already ready, return immediately
+	if envoyClient.IsReady() {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Ready"))
 		return
 	}
-	w.WriteHeader(http.StatusServiceUnavailable)
-	w.Write([]byte("Not Ready"))
+
+	// Session may have expired - try to re-authenticate
+	if err := envoyClient.Authenticate(); err != nil {
+		log.WithError(err).Warn("Readiness check: re-authentication failed")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		w.Write([]byte("Not Ready: " + err.Error()))
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Ready"))
 }
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {
