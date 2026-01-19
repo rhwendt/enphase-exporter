@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/rhwendt/enphase-exporter/compare/v1.0.1...v1.0.2) (2026-01-19)
+
+
+### Bug Fixes
+
+* Add proactive session refresh to prevent data gaps ([#6](https://github.com/rhwendt/enphase-exporter/issues/6)) ([5281f5b](https://github.com/rhwendt/enphase-exporter/commit/5281f5b7cb1563de984ba2188615b0c0c6fd49c5))
+
 ## [1.0.1](https://github.com/rhwendt/enphase-exporter/compare/v1.0.0...v1.0.1) (2026-01-19)
 
 
