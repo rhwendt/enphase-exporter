@@ -29,14 +29,16 @@ type ProductionDevice struct {
 
 // Line represents per-phase data.
 type Line struct {
-	WNow       float64 `json:"wNow"`
-	WhLifetime float64 `json:"whLifetime"`
-	VahLifetime float64 `json:"vahLifetime"`
-	RmsCurrent float64 `json:"rmsCurrent"`
-	RmsVoltage float64 `json:"rmsVoltage"`
-	ReactPwr   float64 `json:"reactPwr"`
-	ApprntPwr  float64 `json:"apprntPwr"`
-	PwrFactor  float64 `json:"pwrFactor"`
+	WNow            float64 `json:"wNow"`
+	WhLifetime      float64 `json:"whLifetime"`
+	WhToday         float64 `json:"whToday"`
+	WhLastSevenDays float64 `json:"whLastSevenDays"`
+	VahLifetime     float64 `json:"vahLifetime"`
+	RmsCurrent      float64 `json:"rmsCurrent"`
+	RmsVoltage      float64 `json:"rmsVoltage"`
+	ReactPwr        float64 `json:"reactPwr"`
+	ApprntPwr       float64 `json:"apprntPwr"`
+	PwrFactor       float64 `json:"pwrFactor"`
 }
 
 // StorageDevice represents a storage device (battery).

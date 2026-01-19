@@ -198,6 +198,8 @@ func (c *ProductionCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	// Consumption metrics (use MeasurementType to distinguish total-consumption vs net-consumption)
+	// NOTE: For split-phase systems, the gateway's top-level whToday/whLastSevenDays/whLifetime
+	// values are incorrectly doubled. We use the sum of per-line values instead.
 	for _, device := range production.Consumption {
 		// Use MeasurementType if available, otherwise fall back to Type
 		label := device.MeasurementType
@@ -210,6 +212,21 @@ func (c *ProductionCollector) Collect(ch chan<- prometheus.Metric) {
 			totalConsumption = device.WNow
 		}
 
+		// Calculate correct values from lines[] if available (fixes split-phase doubling bug)
+		whToday := device.WhToday
+		whLastSevenDays := device.WhLastSevenDays
+		whLifetime := device.WhLifetime
+		if len(device.Lines) > 0 {
+			whToday = 0
+			whLastSevenDays = 0
+			whLifetime = 0
+			for _, line := range device.Lines {
+				whToday += line.WhToday
+				whLastSevenDays += line.WhLastSevenDays
+				whLifetime += line.WhLifetime
+			}
+		}
+
 		ch <- prometheus.MustNewConstMetric(
 			c.consumptionWatts,
 			prometheus.GaugeValue,
@@ -219,19 +236,19 @@ func (c *ProductionCollector) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(
 			c.consumptionWhTotal,
 			prometheus.CounterValue,
-			device.WhLifetime,
+			whLifetime,
 			label,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.consumptionWhToday,
 			prometheus.GaugeValue,
-			device.WhToday,
+			whToday,
 			label,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.consumptionWhLastWeek,
 			prometheus.GaugeValue,
-			device.WhLastSevenDays,
+			whLastSevenDays,
 			label,
 		)
 	}
