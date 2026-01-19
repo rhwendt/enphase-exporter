@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.1](https://github.com/rhwendt/enphase-exporter/compare/v1.0.0...v1.0.1) (2026-01-19)
+
+
+### Bug Fixes
+
+* Authenticate on startup to fix readiness probe deadlock ([#4](https://github.com/rhwendt/enphase-exporter/issues/4)) ([45d0d58](https://github.com/rhwendt/enphase-exporter/commit/45d0d58699c8b119dc2e657f91c7161bede6cfa1))
+* Use TARGETARCH for proper cross-compilation in Docker ([#2](https://github.com/rhwendt/enphase-exporter/issues/2)) ([2aa26dd](https://github.com/rhwendt/enphase-exporter/commit/2aa26ddef77ac1f3353b34c727ffb64ae3d0a249))
+
 ## 1.0.0 (2026-01-18)
 
 
