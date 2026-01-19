@@ -26,12 +26,13 @@ type Config struct {
 
 // Client is an HTTP client for the Enphase IQ Gateway.
 type Client struct {
-	config     Config
-	httpClient *http.Client
-	sessionID  string
-	sessionExp time.Time
-	mu         sync.RWMutex
-	ready      bool
+	config      Config
+	httpClient  *http.Client
+	sessionID   string
+	sessionExp  time.Time
+	mu          sync.RWMutex
+	ready       bool
+	stopRefresh chan struct{}
 }
 
 // New creates a new Enphase client.
@@ -86,6 +87,48 @@ func (c *Client) IsReady() bool {
 // Call this on startup to ensure the exporter is ready before serving requests.
 func (c *Client) Authenticate() error {
 	return c.ensureAuthenticated()
+}
+
+// StartSessionRefresh starts a background goroutine that proactively refreshes
+// the session before it expires. This prevents data gaps during scrapes.
+func (c *Client) StartSessionRefresh() {
+	c.stopRefresh = make(chan struct{})
+
+	go func() {
+		for {
+			c.mu.RLock()
+			timeUntilRefresh := time.Until(c.sessionExp) - refreshBuffer
+			c.mu.RUnlock()
+
+			// Ensure we don't have a negative duration
+			if timeUntilRefresh < 0 {
+				timeUntilRefresh = time.Minute
+			}
+
+			clientLog.WithField("refresh_in", timeUntilRefresh.Round(time.Second)).Debug("Session refresh scheduled")
+
+			select {
+			case <-time.After(timeUntilRefresh):
+				clientLog.Info("Proactively refreshing session before expiry")
+				if err := c.ensureAuthenticated(); err != nil {
+					clientLog.WithError(err).Error("Failed to refresh session, will retry in 1 minute")
+					// Don't exit the loop, keep trying
+				}
+			case <-c.stopRefresh:
+				clientLog.Debug("Session refresh goroutine stopped")
+				return
+			}
+		}
+	}()
+
+	clientLog.Info("Started proactive session refresh")
+}
+
+// StopSessionRefresh stops the background session refresh goroutine.
+func (c *Client) StopSessionRefresh() {
+	if c.stopRefresh != nil {
+		close(c.stopRefresh)
+	}
 }
 
 // GetProduction fetches production data from the gateway.
