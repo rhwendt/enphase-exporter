@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3](https://github.com/rhwendt/enphase-exporter/compare/v1.0.2...v1.0.3) (2026-01-19)
+
+
+### Bug Fixes
+
+* Use per-line values to fix split-phase consumption doubling ([ee84454](https://github.com/rhwendt/enphase-exporter/commit/ee844545f02b2bfe35a33638630c7657ff2a8f9f))
+
 ## [1.0.2](https://github.com/rhwendt/enphase-exporter/compare/v1.0.1...v1.0.2) (2026-01-19)
 
 
