@@ -22,7 +22,9 @@ jobs:
         uses: google-github-actions/release-please-action@v4
         with:
           release-type: go
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # Use PAT instead of GITHUB_TOKEN so commits trigger CI workflows
+          # GITHUB_TOKEN commits are made by github-actions[bot] which doesn't trigger workflows
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
 
   build-release:
     needs: release-please
