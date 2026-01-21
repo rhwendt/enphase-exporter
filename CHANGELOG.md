@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/rhwendt/enphase-exporter/compare/v1.0.3...v1.1.0) (2026-01-21)
+
+
+### Features
+
+* Add energy export/import metrics ([#9](https://github.com/rhwendt/enphase-exporter/issues/9)) ([25a97f6](https://github.com/rhwendt/enphase-exporter/commit/25a97f6b812474f7b8fd3b62cdfe1d5f2cf7eaaa))
+
 ## [1.0.3](https://github.com/rhwendt/enphase-exporter/compare/v1.0.2...v1.0.3) (2026-01-19)
 
 
