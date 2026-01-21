@@ -64,6 +64,10 @@ The `measurement_type` label distinguishes:
 | `enphase_voltage_volts` | Meter voltage | `meter_id`, `phase` |
 | `enphase_power_factor` | Meter power factor | `meter_id`, `phase` |
 | `enphase_frequency_hz` | Grid frequency | `meter_id` |
+| `enphase_energy_exported_wh` | Cumulative energy exported to grid in Wh | `meter_id`, `phase` |
+| `enphase_energy_imported_wh` | Cumulative energy imported from grid in Wh | `meter_id`, `phase` |
+
+The `phase` label can be `total` for aggregate values or `L1`, `L2`, etc. for per-phase readings.
 
 ### Exporter Metrics
 
