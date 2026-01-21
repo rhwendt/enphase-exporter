@@ -13,11 +13,13 @@ var metersLog = logrus.WithField("collector", "meters")
 type MetersCollector struct {
 	client EnphaseClient
 
-	voltage     *prometheus.Desc
-	current     *prometheus.Desc
-	activePower *prometheus.Desc
-	powerFactor *prometheus.Desc
-	frequency   *prometheus.Desc
+	voltage        *prometheus.Desc
+	current        *prometheus.Desc
+	activePower    *prometheus.Desc
+	powerFactor    *prometheus.Desc
+	frequency      *prometheus.Desc
+	energyExported *prometheus.Desc
+	energyImported *prometheus.Desc
 }
 
 // NewMetersCollector creates a new MetersCollector.
@@ -54,6 +56,18 @@ func NewMetersCollector(client EnphaseClient) *MetersCollector {
 			[]string{"meter_id"},
 			nil,
 		),
+		energyExported: prometheus.NewDesc(
+			"enphase_energy_exported_wh",
+			"Cumulative energy exported to grid in watt-hours",
+			[]string{"meter_id", "phase"},
+			nil,
+		),
+		energyImported: prometheus.NewDesc(
+			"enphase_energy_imported_wh",
+			"Cumulative energy imported from grid in watt-hours",
+			[]string{"meter_id", "phase"},
+			nil,
+		),
 	}
 }
 
@@ -64,6 +78,8 @@ func (c *MetersCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.activePower
 	ch <- c.powerFactor
 	ch <- c.frequency
+	ch <- c.energyExported
+	ch <- c.energyImported
 }
 
 // Collect implements prometheus.Collector.
@@ -112,6 +128,18 @@ func (c *MetersCollector) Collect(ch chan<- prometheus.Metric) {
 			reading.Freq,
 			meterID,
 		)
+		ch <- prometheus.MustNewConstMetric(
+			c.energyExported,
+			prometheus.CounterValue,
+			reading.ActEnergyDlvd,
+			meterID, "total",
+		)
+		ch <- prometheus.MustNewConstMetric(
+			c.energyImported,
+			prometheus.CounterValue,
+			reading.ActEnergyRcvd,
+			meterID, "total",
+		)
 
 		// Per-phase values
 		for i, channel := range reading.Channels {
@@ -138,6 +166,18 @@ func (c *MetersCollector) Collect(ch chan<- prometheus.Metric) {
 				c.powerFactor,
 				prometheus.GaugeValue,
 				channel.PwrFactor,
+				meterID, phase,
+			)
+			ch <- prometheus.MustNewConstMetric(
+				c.energyExported,
+				prometheus.CounterValue,
+				channel.ActEnergyDlvd,
+				meterID, phase,
+			)
+			ch <- prometheus.MustNewConstMetric(
+				c.energyImported,
+				prometheus.CounterValue,
+				channel.ActEnergyRcvd,
 				meterID, phase,
 			)
 		}
