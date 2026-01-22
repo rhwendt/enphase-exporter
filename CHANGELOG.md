@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/rhwendt/enphase-exporter/compare/v1.2.0...v1.2.1) (2026-01-22)
+
+
+### Bug Fixes
+
+* Use top-level values for daily/weekly consumption metrics ([6245648](https://github.com/rhwendt/enphase-exporter/commit/62456485c44527630c30eaaf6c45acf58ac67440))
+
 ## [1.2.0](https://github.com/rhwendt/enphase-exporter/compare/v1.1.0...v1.2.0) (2026-01-22)
 
 
