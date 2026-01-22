@@ -1,8 +1,6 @@
 package collector
 
 import (
-	"time"
-
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 )
@@ -52,11 +50,7 @@ func (c *InvertersCollector) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect implements prometheus.Collector.
 func (c *InvertersCollector) Collect(ch chan<- prometheus.Metric) {
-	start := time.Now()
 	inverters, err := c.client.GetInverters()
-	duration := time.Since(start)
-	APICallDuration.WithLabelValues("inverters").Observe(duration.Seconds())
-	invertersLog.WithField("duration_ms", duration.Milliseconds()).Debug("GetInverters completed")
 	if err != nil {
 		invertersLog.WithError(err).Error("Failed to get inverter data")
 		return
