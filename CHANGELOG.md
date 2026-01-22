@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.3.0](https://github.com/rhwendt/enphase-exporter/compare/v1.2.1...v1.3.0) (2026-01-22)
+
+
+### Features
+
+* Add API call duration metrics and timing logs ([52dc896](https://github.com/rhwendt/enphase-exporter/commit/52dc896d1b590b74e4ac3fd9a1b5fadc08f7f369))
+* Add API call duration metrics and timing logs ([#14](https://github.com/rhwendt/enphase-exporter/issues/14)) ([75bfd33](https://github.com/rhwendt/enphase-exporter/commit/75bfd3332380f3a662a9b584da1ace4c540a9341))
+* Add authentication, API client, and K8s deployment ([b4c0b2f](https://github.com/rhwendt/enphase-exporter/commit/b4c0b2f5fdf8367e6f5cbded39862ef4ac7588e5))
+* Add consumption metrics and improve documentation ([9b2ae3b](https://github.com/rhwendt/enphase-exporter/commit/9b2ae3bbccff4b2d088b30964f15abb0c92edab5))
+* Add energy export/import metrics ([#9](https://github.com/rhwendt/enphase-exporter/issues/9)) ([25a97f6](https://github.com/rhwendt/enphase-exporter/commit/25a97f6b812474f7b8fd3b62cdfe1d5f2cf7eaaa))
+* Initial project structure and scaffolding ([ad19615](https://github.com/rhwendt/enphase-exporter/commit/ad1961572aad8be788f7ec63be58ce90492103de))
+
+
+### Bug Fixes
+
+* Add proactive session refresh to prevent data gaps ([#6](https://github.com/rhwendt/enphase-exporter/issues/6)) ([5281f5b](https://github.com/rhwendt/enphase-exporter/commit/5281f5b7cb1563de984ba2188615b0c0c6fd49c5))
+* Authenticate on startup to fix readiness probe deadlock ([#4](https://github.com/rhwendt/enphase-exporter/issues/4)) ([45d0d58](https://github.com/rhwendt/enphase-exporter/commit/45d0d58699c8b119dc2e657f91c7161bede6cfa1))
+* Document split-phase daily metrics limitation ([#17](https://github.com/rhwendt/enphase-exporter/issues/17)) ([5ab6cfb](https://github.com/rhwendt/enphase-exporter/commit/5ab6cfb92b64bf6bd3f44f24b2255392fc1d83f6))
+* Use per-line values to fix split-phase consumption doubling ([ee84454](https://github.com/rhwendt/enphase-exporter/commit/ee844545f02b2bfe35a33638630c7657ff2a8f9f))
+* Use TARGETARCH for proper cross-compilation in Docker ([#2](https://github.com/rhwendt/enphase-exporter/issues/2)) ([2aa26dd](https://github.com/rhwendt/enphase-exporter/commit/2aa26ddef77ac1f3353b34c727ffb64ae3d0a249))
+* Use top-level values for daily/weekly consumption metrics ([6245648](https://github.com/rhwendt/enphase-exporter/commit/62456485c44527630c30eaaf6c45acf58ac67440))
+
 ## [1.2.1](https://github.com/rhwendt/enphase-exporter/compare/v1.2.0...v1.2.1) (2026-01-22)
 
 
