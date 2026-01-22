@@ -1,6 +1,8 @@
 package collector
 
 import (
+	"time"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 )
@@ -137,7 +139,11 @@ func (c *ProductionCollector) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect implements prometheus.Collector.
 func (c *ProductionCollector) Collect(ch chan<- prometheus.Metric) {
+	start := time.Now()
 	production, err := c.client.GetProduction()
+	duration := time.Since(start)
+	APICallDuration.WithLabelValues("production").Observe(duration.Seconds())
+	productionLog.WithField("duration_ms", duration.Milliseconds()).Debug("GetProduction completed")
 	if err != nil {
 		productionLog.WithError(err).Error("Failed to get production data")
 		return

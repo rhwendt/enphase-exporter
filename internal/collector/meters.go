@@ -2,6 +2,7 @@ package collector
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
@@ -84,7 +85,11 @@ func (c *MetersCollector) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect implements prometheus.Collector.
 func (c *MetersCollector) Collect(ch chan<- prometheus.Metric) {
+	start := time.Now()
 	readings, err := c.client.GetMeterReadings()
+	duration := time.Since(start)
+	APICallDuration.WithLabelValues("meters").Observe(duration.Seconds())
+	metersLog.WithField("duration_ms", duration.Milliseconds()).Debug("GetMeterReadings completed")
 	if err != nil {
 		metersLog.WithError(err).Error("Failed to get meter readings")
 		return
