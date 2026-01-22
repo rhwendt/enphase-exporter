@@ -204,8 +204,15 @@ func (c *ProductionCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	// Consumption metrics (use MeasurementType to distinguish total-consumption vs net-consumption)
-	// NOTE: For split-phase systems, the gateway's top-level whToday/whLastSevenDays/whLifetime
-	// values are incorrectly doubled. We use the sum of per-line values instead.
+	//
+	// KNOWN LIMITATION - Split-phase daily metrics:
+	// The Enphase gateway has two bugs affecting split-phase systems:
+	// 1. Top-level whToday/whLastSevenDays/whLifetime values are doubled
+	// 2. The lines[] array values do NOT reset at midnight (only lifetime is accurate)
+	//
+	// We use lines[] summation which fixes the doubling but means daily/weekly values
+	// may not reset properly at midnight. For accurate daily values, use the Enphase app
+	// which gets data from the cloud API.
 	for _, device := range production.Consumption {
 		// Use MeasurementType if available, otherwise fall back to Type
 		label := device.MeasurementType
@@ -218,7 +225,7 @@ func (c *ProductionCollector) Collect(ch chan<- prometheus.Metric) {
 			totalConsumption = device.WNow
 		}
 
-		// Calculate correct values from lines[] if available (fixes split-phase doubling bug)
+		// Use lines[] summation to avoid split-phase doubling (see KNOWN LIMITATION above)
 		whToday := device.WhToday
 		whLastSevenDays := device.WhLastSevenDays
 		whLifetime := device.WhLifetime
