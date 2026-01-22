@@ -204,8 +204,10 @@ func (c *ProductionCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	// Consumption metrics (use MeasurementType to distinguish total-consumption vs net-consumption)
-	// NOTE: For split-phase systems, the gateway's top-level whToday/whLastSevenDays/whLifetime
-	// values are incorrectly doubled. We use the sum of per-line values instead.
+	// NOTE: For split-phase systems, the gateway's top-level whLifetime value is incorrectly
+	// doubled. We use the sum of per-line values for lifetime metrics only.
+	// However, whToday and whLastSevenDays reset correctly at the top level, but the
+	// lines[] values do NOT reset at midnight, so we use top-level values for those.
 	for _, device := range production.Consumption {
 		// Use MeasurementType if available, otherwise fall back to Type
 		label := device.MeasurementType
@@ -218,17 +220,14 @@ func (c *ProductionCollector) Collect(ch chan<- prometheus.Metric) {
 			totalConsumption = device.WNow
 		}
 
-		// Calculate correct values from lines[] if available (fixes split-phase doubling bug)
+		// Use top-level values for daily/weekly (they reset correctly)
 		whToday := device.WhToday
 		whLastSevenDays := device.WhLastSevenDays
+		// Calculate lifetime from lines[] if available (fixes split-phase doubling bug)
 		whLifetime := device.WhLifetime
 		if len(device.Lines) > 0 {
-			whToday = 0
-			whLastSevenDays = 0
 			whLifetime = 0
 			for _, line := range device.Lines {
-				whToday += line.WhToday
-				whLastSevenDays += line.WhLastSevenDays
 				whLifetime += line.WhLifetime
 			}
 		}
