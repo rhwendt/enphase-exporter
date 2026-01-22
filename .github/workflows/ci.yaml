@@ -10,8 +10,6 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
-    # Skip CI for release-please PRs - code was already tested when merged to main
-    if: ${{ !startsWith(github.head_ref || '', 'release-please') }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
