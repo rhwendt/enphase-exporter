@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.0](https://github.com/rhwendt/enphase-exporter/compare/v1.1.0...v1.2.0) (2026-01-22)
+
+
+### Features
+
+* Add API call duration metrics and timing logs ([52dc896](https://github.com/rhwendt/enphase-exporter/commit/52dc896d1b590b74e4ac3fd9a1b5fadc08f7f369))
+* Add API call duration metrics and timing logs ([#14](https://github.com/rhwendt/enphase-exporter/issues/14)) ([75bfd33](https://github.com/rhwendt/enphase-exporter/commit/75bfd3332380f3a662a9b584da1ace4c540a9341))
+
 ## [1.1.0](https://github.com/rhwendt/enphase-exporter/compare/v1.0.3...v1.1.0) (2026-01-21)
 
 
