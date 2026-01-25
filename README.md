@@ -75,6 +75,51 @@ The `phase` label can be `total` for aggregate values or `L1`, `L2`, etc. for pe
 |--------|-------------|--------|
 | `enphase_exporter_build_info` | Build information | `version`, `commit`, `built` |
 
+## Known Issues
+
+### Daily Metrics Don't Reset at Midnight
+
+**Problem:** The Enphase gateway has a firmware bug where `whToday` values may not reset at midnight. This causes the `enphase_production_wh_today` and `enphase_consumption_wh_today` metrics to accumulate over multiple days, resulting in inflated values.
+
+**Workaround:** Use Prometheus `increase()` function on the lifetime counters instead.
+
+**Rolling 24 Hours:**
+```promql
+# Rolling 24-hour production
+increase(enphase_production_wh_total{device_type="eim"}[24h])
+
+# Rolling 24-hour total consumption
+increase(enphase_consumption_wh_total{measurement_type="total-consumption"}[24h])
+
+# Rolling 24-hour net consumption (grid import)
+increase(enphase_consumption_wh_total{measurement_type="net-consumption"}[24h])
+```
+
+**Today So Far (since midnight):**
+
+In Grafana, set the dashboard/panel time range to **"Today so far"** and use `$__range`:
+
+```promql
+# Production today (since midnight)
+increase(enphase_production_wh_total{device_type="eim"}[$__range])
+
+# Total consumption today (since midnight)
+increase(enphase_consumption_wh_total{measurement_type="total-consumption"}[$__range])
+
+# Net consumption today (since midnight)
+increase(enphase_consumption_wh_total{measurement_type="net-consumption"}[$__range])
+```
+
+The `$__range` variable automatically adjusts to the selected time range, so "Today so far" gives you midnight to now.
+
+The `_wh_total` metrics are lifetime counters that always increase reliably, making them suitable for calculating daily values via Prometheus.
+
+### Split-Phase Doubling
+
+**Problem:** On split-phase electrical systems (common in North America), the gateway may report doubled values for daily/weekly/lifetime metrics at the top level.
+
+**Workaround:** The exporter automatically sums the per-phase `lines[]` values which provides accurate totals. This is handled internally - no user action needed.
+
 ## Quick Start
 
 ### 1. Generate JWT Token

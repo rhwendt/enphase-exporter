@@ -73,7 +73,7 @@ func NewProductionCollector(client EnphaseClient) *ProductionCollector {
 		),
 		productionWhToday: prometheus.NewDesc(
 			"enphase_production_wh_today",
-			"Production today in watt-hours",
+			"Production today in watt-hours (WARNING: gateway value may not reset at midnight - use increase(enphase_production_wh_total[24h]) instead)",
 			[]string{"device_type"},
 			nil,
 		),
@@ -98,7 +98,7 @@ func NewProductionCollector(client EnphaseClient) *ProductionCollector {
 		),
 		consumptionWhToday: prometheus.NewDesc(
 			"enphase_consumption_wh_today",
-			"Consumption today in watt-hours",
+			"Consumption today in watt-hours (WARNING: gateway value may not reset at midnight - use increase(enphase_consumption_wh_total[24h]) instead)",
 			[]string{"measurement_type"},
 			nil,
 		),
@@ -205,14 +205,26 @@ func (c *ProductionCollector) Collect(ch chan<- prometheus.Metric) {
 
 	// Consumption metrics (use MeasurementType to distinguish total-consumption vs net-consumption)
 	//
-	// KNOWN LIMITATION - Split-phase daily metrics:
-	// The Enphase gateway has two bugs affecting split-phase systems:
-	// 1. Top-level whToday/whLastSevenDays/whLifetime values are doubled
-	// 2. The lines[] array values do NOT reset at midnight (only lifetime is accurate)
+	// KNOWN BUG - Enphase Gateway Daily Metrics:
+	// The Enphase gateway has bugs affecting daily/weekly metrics:
+	// 1. Split-phase systems: Top-level whToday/whLastSevenDays/whLifetime values are doubled
+	// 2. All systems: The whToday values may NOT reset at midnight (accumulates over days)
 	//
-	// We use lines[] summation which fixes the doubling but means daily/weekly values
-	// may not reset properly at midnight. For accurate daily values, use the Enphase app
-	// which gets data from the cloud API.
+	// We use lines[] summation which fixes the doubling issue (#1).
+	// However, the midnight reset issue (#2) is a gateway firmware bug we cannot fix.
+	//
+	// WORKAROUND - Use Prometheus queries on the lifetime counter instead:
+	//
+	//   Rolling 24-hour:
+	//     increase(enphase_production_wh_total{device_type="eim"}[24h])
+	//     increase(enphase_consumption_wh_total{measurement_type="total-consumption"}[24h])
+	//
+	//   Today so far (in Grafana, set time range to "Today so far"):
+	//     increase(enphase_production_wh_total{device_type="eim"}[$__range])
+	//     increase(enphase_consumption_wh_total{measurement_type="total-consumption"}[$__range])
+	//
+	// The _wh_total metrics are lifetime counters that always increase, making them
+	// reliable for calculating daily values via Prometheus increase() function.
 	for _, device := range production.Consumption {
 		// Use MeasurementType if available, otherwise fall back to Type
 		label := device.MeasurementType
