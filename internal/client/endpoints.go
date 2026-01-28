@@ -5,9 +5,9 @@ const (
 	// Public endpoints (no auth required)
 	EndpointInfo = "/info.xml"
 
-	// Production endpoints
-	EndpointProduction = "/production.json"
-	EndpointProductionDetails = "/production.json?details=1"
+	// Production/consumption report endpoints (fast ~0.5s each)
+	EndpointProductionReport  = "/ivp/meters/reports/production"
+	EndpointConsumptionReport = "/ivp/meters/reports/consumption"
 
 	// Meter endpoints
 	EndpointMeterReadings = "/ivp/meters/readings"

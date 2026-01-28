@@ -54,7 +54,7 @@ func New(config Config) (*Client, error) {
 	// Create HTTP client with TLS skip verify (local gateway uses self-signed cert)
 	httpClient := &http.Client{
 		Jar:     jar,
-		Timeout: 30 * time.Second,
+		Timeout: 15 * time.Second,
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
@@ -131,22 +131,43 @@ func (c *Client) StopSessionRefresh() {
 	}
 }
 
-// GetProduction fetches production data from the gateway.
-func (c *Client) GetProduction() (*ProductionResponse, error) {
+// GetProductionReport fetches the production meter report from the gateway.
+func (c *Client) GetProductionReport() (*ProductionReportResponse, error) {
 	if err := c.ensureAuthenticated(); err != nil {
 		return nil, err
 	}
 
-	url := c.config.Address + EndpointProductionDetails
+	url := c.config.Address + EndpointProductionReport
 	resp, err := c.doRequest("GET", url)
 	if err != nil {
-		return nil, fmt.Errorf("production request failed: %w", err)
+		return nil, fmt.Errorf("production report request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
-	var result ProductionResponse
+	var result ProductionReportResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("failed to decode production response: %w", err)
+		return nil, fmt.Errorf("failed to decode production report response: %w", err)
+	}
+
+	return &result, nil
+}
+
+// GetConsumptionReport fetches the consumption meter report from the gateway.
+func (c *Client) GetConsumptionReport() (*ConsumptionReportResponse, error) {
+	if err := c.ensureAuthenticated(); err != nil {
+		return nil, err
+	}
+
+	url := c.config.Address + EndpointConsumptionReport
+	resp, err := c.doRequest("GET", url)
+	if err != nil {
+		return nil, fmt.Errorf("consumption report request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var result ConsumptionReportResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode consumption report response: %w", err)
 	}
 
 	return &result, nil
