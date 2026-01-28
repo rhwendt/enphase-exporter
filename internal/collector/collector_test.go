@@ -12,14 +12,19 @@ import (
 
 // mockClient implements EnphaseClient for testing
 type mockClient struct {
-	production    *client.ProductionResponse
-	inverters     *client.InvertersResponse
-	meterReadings *client.MeterReadingsResponse
-	err           error
+	productionReport  *client.ProductionReportResponse
+	consumptionReport *client.ConsumptionReportResponse
+	inverters         *client.InvertersResponse
+	meterReadings     *client.MeterReadingsResponse
+	err               error
 }
 
-func (m *mockClient) GetProduction() (*client.ProductionResponse, error) {
-	return m.production, m.err
+func (m *mockClient) GetProductionReport() (*client.ProductionReportResponse, error) {
+	return m.productionReport, m.err
+}
+
+func (m *mockClient) GetConsumptionReport() (*client.ConsumptionReportResponse, error) {
+	return m.consumptionReport, m.err
 }
 
 func (m *mockClient) GetInverters() (*client.InvertersResponse, error) {
@@ -31,39 +36,40 @@ func (m *mockClient) GetMeterReadings() (*client.MeterReadingsResponse, error) {
 }
 
 func TestProductionCollector(t *testing.T) {
-	mock := &mockClient{
-		production: &client.ProductionResponse{
-			Production: []client.ProductionDevice{
-				{
-					Type:            "inverters",
-					WNow:            2500.5,
-					WhLifetime:      1500000,
-					WhToday:         5000,
-					WhLastSevenDays: 35000,
-					RmsVoltage:      240.0,
-					RmsCurrent:      10.4,
-					PwrFactor:       0.99,
-				},
-			},
-			Consumption: []client.ProductionDevice{
-				{
-					Type:            "eim",
-					MeasurementType: "total-consumption",
-					WNow:            1500.0,
-					WhLifetime:      3000000,
-					WhToday:         10000,
-					WhLastSevenDays: 70000,
-				},
-				{
-					Type:            "eim",
-					MeasurementType: "net-consumption",
-					WNow:            -1000.0,
-					WhLifetime:      1500000,
-					WhToday:         0,
-					WhLastSevenDays: 0,
-				},
+	prodReport := &client.ProductionReportResponse{
+		CreatedAt:  1706400000,
+		ReportType: "production",
+		Cumulative: client.MeterReportData{
+			CurrW:      2500.5,
+			WhDlvdCum:  1500000,
+			RmsVoltage: 240.0,
+			RmsCurrent: 10.4,
+			PwrFactor:  0.99,
+		},
+	}
+
+	consReport := &client.ConsumptionReportResponse{
+		{
+			CreatedAt:  1706400000,
+			ReportType: "total-consumption",
+			Cumulative: client.MeterReportData{
+				CurrW:     1500.0,
+				WhDlvdCum: 3000000,
 			},
 		},
+		{
+			CreatedAt:  1706400000,
+			ReportType: "net-consumption",
+			Cumulative: client.MeterReportData{
+				CurrW:     -1000.0,
+				WhDlvdCum: 1500000,
+			},
+		},
+	}
+
+	mock := &mockClient{
+		productionReport:  prodReport,
+		consumptionReport: consReport,
 	}
 
 	collector := NewProductionCollector(mock)
@@ -76,7 +82,7 @@ func TestProductionCollector(t *testing.T) {
 	expected := `
 		# HELP enphase_production_watts Current solar production in watts
 		# TYPE enphase_production_watts gauge
-		enphase_production_watts{device_type="inverters"} 2500.5
+		enphase_production_watts{device_type="eim"} 2500.5
 	`
 	if err := testutil.CollectAndCompare(collector, strings.NewReader(expected), "enphase_production_watts"); err != nil {
 		t.Errorf("production watts mismatch: %v", err)
@@ -101,6 +107,16 @@ func TestProductionCollector(t *testing.T) {
 	`
 	if err := testutil.CollectAndCompare(collector, strings.NewReader(expectedNet), "enphase_net_watts"); err != nil {
 		t.Errorf("net watts mismatch: %v", err)
+	}
+
+	// Test production wh total
+	expectedWhTotal := `
+		# HELP enphase_production_wh_total Total lifetime production in watt-hours
+		# TYPE enphase_production_wh_total counter
+		enphase_production_wh_total{device_type="eim"} 1.5e+06
+	`
+	if err := testutil.CollectAndCompare(collector, strings.NewReader(expectedWhTotal), "enphase_production_wh_total"); err != nil {
+		t.Errorf("production wh total mismatch: %v", err)
 	}
 }
 
@@ -191,9 +207,10 @@ func TestMetersCollector(t *testing.T) {
 func TestCollector_NilData(t *testing.T) {
 	// Test that collectors handle nil data gracefully
 	mock := &mockClient{
-		production:    nil,
-		inverters:     nil,
-		meterReadings: nil,
+		productionReport:  nil,
+		consumptionReport: nil,
+		inverters:         nil,
+		meterReadings:     nil,
 	}
 
 	prodCollector := NewProductionCollector(mock)

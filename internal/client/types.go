@@ -1,55 +1,36 @@
 package client
 
-// ProductionResponse represents the response from /production.json
-type ProductionResponse struct {
-	Production  []ProductionDevice `json:"production"`
-	Consumption []ProductionDevice `json:"consumption"`
-	Storage     []StorageDevice    `json:"storage"`
+// MeterReport represents a single report from /ivp/meters/reports/*
+type MeterReport struct {
+	CreatedAt  int64             `json:"createdAt"`
+	ReportType string            `json:"reportType"` // "production", "total-consumption", "net-consumption"
+	Cumulative MeterReportData   `json:"cumulative"`
+	Lines      []MeterReportData `json:"lines,omitempty"`
 }
 
-// ProductionDevice represents a production device in the response.
-type ProductionDevice struct {
-	Type             string  `json:"type"`
-	MeasurementType  string  `json:"measurementType,omitempty"` // For consumption: "total-consumption" or "net-consumption"
-	ActiveCount      int     `json:"activeCount"`
-	ReadingTime      int64   `json:"readingTime"`
-	WNow             float64 `json:"wNow"`
-	WhLifetime       float64 `json:"whLifetime"`
-	WhToday          float64 `json:"whToday"`
-	WhLastSevenDays  float64 `json:"whLastSevenDays"`
-	VahLifetime      float64 `json:"vahLifetime"`
-	RmsCurrent       float64 `json:"rmsCurrent"`
-	RmsVoltage       float64 `json:"rmsVoltage"`
-	ReactPwr         float64 `json:"reactPwr"`
-	ApprntPwr        float64 `json:"apprntPwr"`
-	PwrFactor        float64 `json:"pwrFactor"`
-	WhLastUpdate     int64   `json:"whLastUpdate"`
-	Lines            []Line  `json:"lines,omitempty"`
+// MeterReportData contains power/energy data from a meter report.
+type MeterReportData struct {
+	CurrW       float64 `json:"currW"`
+	ActPower    float64 `json:"actPower"`
+	ApprntPwr   float64 `json:"apprntPwr"`
+	ReactPwr    float64 `json:"reactPwr"`
+	WhDlvdCum   float64 `json:"whDlvdCum"`
+	WhRcvdCum   float64 `json:"whRcvdCum"`
+	VarhLagCum  float64 `json:"varhLagCum"`
+	VarhLeadCum float64 `json:"varhLeadCum"`
+	VahCum      float64 `json:"vahCum"`
+	RmsVoltage  float64 `json:"rmsVoltage"`
+	RmsCurrent  float64 `json:"rmsCurrent"`
+	PwrFactor   float64 `json:"pwrFactor"`
+	FreqHz      float64 `json:"freqHz"`
 }
 
-// Line represents per-phase data.
-type Line struct {
-	WNow            float64 `json:"wNow"`
-	WhLifetime      float64 `json:"whLifetime"`
-	WhToday         float64 `json:"whToday"`
-	WhLastSevenDays float64 `json:"whLastSevenDays"`
-	VahLifetime     float64 `json:"vahLifetime"`
-	RmsCurrent      float64 `json:"rmsCurrent"`
-	RmsVoltage      float64 `json:"rmsVoltage"`
-	ReactPwr        float64 `json:"reactPwr"`
-	ApprntPwr       float64 `json:"apprntPwr"`
-	PwrFactor       float64 `json:"pwrFactor"`
-}
+// ProductionReportResponse is a single MeterReport from /ivp/meters/reports/production
+type ProductionReportResponse = MeterReport
 
-// StorageDevice represents a storage device (battery).
-type StorageDevice struct {
-	Type        string  `json:"type"`
-	ActiveCount int     `json:"activeCount"`
-	ReadingTime int64   `json:"readingTime"`
-	WNow        float64 `json:"wNow"`
-	WhNow       float64 `json:"whNow"`
-	State       string  `json:"state"`
-}
+// ConsumptionReportResponse is an array of MeterReports from /ivp/meters/reports/consumption
+// Contains "total-consumption" and "net-consumption" entries.
+type ConsumptionReportResponse = []MeterReport
 
 // MeterReadingsResponse represents the response from /ivp/meters/readings
 type MeterReadingsResponse []MeterReading

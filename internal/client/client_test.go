@@ -51,41 +51,75 @@ func TestNewClient(t *testing.T) {
 	}
 }
 
-func TestClient_GetProduction(t *testing.T) {
-	// Create a mock server
+func TestClient_GetProductionReport(t *testing.T) {
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/auth/check_jwt":
 			w.WriteHeader(http.StatusOK)
-		case "/production.json":
-			resp := ProductionResponse{
-				Production: []ProductionDevice{
-					{
-						Type:       "inverters",
-						WNow:       2500.5,
-						WhLifetime: 1500000,
-						WhToday:    5000,
-					},
-					{
-						Type:       "eim",
-						WNow:       2480.0,
-						WhLifetime: 1495000,
-						RmsVoltage: 240.5,
-						RmsCurrent: 10.3,
+		case "/ivp/meters/reports/production":
+			resp := ProductionReportResponse{
+				CreatedAt:  1706400000,
+				ReportType: "production",
+				Cumulative: MeterReportData{
+					CurrW:      2500.5,
+					WhDlvdCum:  1500000,
+					RmsVoltage: 240.5,
+					RmsCurrent: 10.3,
+					PwrFactor:  0.99,
+				},
+			}
+			json.NewEncoder(w).Encode(resp)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	client, err := New(Config{
+		Address: server.URL,
+		Serial:  "123456789",
+		JWT:     "test-jwt",
+	})
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+	client.httpClient = server.Client()
+
+	report, err := client.GetProductionReport()
+	if err != nil {
+		t.Fatalf("GetProductionReport() error = %v", err)
+	}
+
+	if report.Cumulative.CurrW != 2500.5 {
+		t.Errorf("Expected production watts 2500.5, got %f", report.Cumulative.CurrW)
+	}
+
+	if report.ReportType != "production" {
+		t.Errorf("Expected report type 'production', got '%s'", report.ReportType)
+	}
+}
+
+func TestClient_GetConsumptionReport(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/auth/check_jwt":
+			w.WriteHeader(http.StatusOK)
+		case "/ivp/meters/reports/consumption":
+			resp := ConsumptionReportResponse{
+				{
+					CreatedAt:  1706400000,
+					ReportType: "total-consumption",
+					Cumulative: MeterReportData{
+						CurrW:     1500.0,
+						WhDlvdCum: 3000000,
 					},
 				},
-				Consumption: []ProductionDevice{
-					{
-						Type:            "eim",
-						MeasurementType: "total-consumption",
-						WNow:            1500.0,
-						WhLifetime:      3000000,
-					},
-					{
-						Type:            "eim",
-						MeasurementType: "net-consumption",
-						WNow:            -1000.0,
-						WhLifetime:      1500000,
+				{
+					CreatedAt:  1706400000,
+					ReportType: "net-consumption",
+					Cumulative: MeterReportData{
+						CurrW:     -1000.0,
+						WhDlvdCum: 1500000,
 					},
 				},
 			}
@@ -104,29 +138,23 @@ func TestClient_GetProduction(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
 	}
-
-	// Replace the HTTP client with the test server's client
 	client.httpClient = server.Client()
 
-	production, err := client.GetProduction()
+	report, err := client.GetConsumptionReport()
 	if err != nil {
-		t.Fatalf("GetProduction() error = %v", err)
+		t.Fatalf("GetConsumptionReport() error = %v", err)
 	}
 
-	if len(production.Production) != 2 {
-		t.Errorf("Expected 2 production devices, got %d", len(production.Production))
+	if len(*report) != 2 {
+		t.Fatalf("Expected 2 consumption reports, got %d", len(*report))
 	}
 
-	if production.Production[0].WNow != 2500.5 {
-		t.Errorf("Expected production watts 2500.5, got %f", production.Production[0].WNow)
+	if (*report)[0].ReportType != "total-consumption" {
+		t.Errorf("Expected report type 'total-consumption', got '%s'", (*report)[0].ReportType)
 	}
 
-	if len(production.Consumption) != 2 {
-		t.Errorf("Expected 2 consumption devices, got %d", len(production.Consumption))
-	}
-
-	if production.Consumption[0].MeasurementType != "total-consumption" {
-		t.Errorf("Expected measurement type 'total-consumption', got '%s'", production.Consumption[0].MeasurementType)
+	if (*report)[0].Cumulative.CurrW != 1500.0 {
+		t.Errorf("Expected consumption watts 1500.0, got %f", (*report)[0].Cumulative.CurrW)
 	}
 }
 
