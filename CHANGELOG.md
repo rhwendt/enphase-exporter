@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/rhwendt/enphase-exporter/compare/v1.3.0...v1.4.0) (2026-01-28)
+
+
+### Features
+
+* Replace slow production.json with fast meter report endpoints ([#22](https://github.com/rhwendt/enphase-exporter/issues/22)) ([144870d](https://github.com/rhwendt/enphase-exporter/commit/144870d1b27f819d0f70cb614c3a4b64b1e655e3))
+
 ## [1.3.0](https://github.com/rhwendt/enphase-exporter/compare/v1.2.1...v1.3.0) (2026-01-22)
 
 
