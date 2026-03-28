@@ -59,15 +59,32 @@ The `measurement_type` label distinguishes:
 
 | Metric | Description | Labels |
 |--------|-------------|--------|
-| `enphase_active_power_watts` | Meter active power | `meter_id`, `phase` |
-| `enphase_current_amps` | Meter current | `meter_id`, `phase` |
-| `enphase_voltage_volts` | Meter voltage | `meter_id`, `phase` |
-| `enphase_power_factor` | Meter power factor | `meter_id`, `phase` |
-| `enphase_frequency_hz` | Grid frequency | `meter_id` |
-| `enphase_energy_exported_wh` | Cumulative energy exported to grid in Wh | `meter_id`, `phase` |
-| `enphase_energy_imported_wh` | Cumulative energy imported from grid in Wh | `meter_id`, `phase` |
+| `enphase_active_power_watts` | Meter active power | `measurement_type`, `meter_id`, `phase` |
+| `enphase_current_amps` | Meter current | `measurement_type`, `meter_id`, `phase` |
+| `enphase_voltage_volts` | Meter voltage | `measurement_type`, `meter_id`, `phase` |
+| `enphase_power_factor` | Meter power factor | `measurement_type`, `meter_id`, `phase` |
+| `enphase_frequency_hz` | Grid frequency | `measurement_type`, `meter_id` |
+| `enphase_meter_energy_delivered_wh` | Cumulative energy delivered in Wh | `measurement_type`, `meter_id`, `phase` |
+| `enphase_meter_energy_received_wh` | Cumulative energy received in Wh | `measurement_type`, `meter_id`, `phase` |
+
+The `measurement_type` label identifies the meter's purpose:
+- `production` - Solar production meter (delivered = energy produced)
+- `net-consumption` - Grid net meter (delivered = exported to grid, received = imported from grid)
+- `total-consumption` - Total consumption meter
 
 The `phase` label can be `total` for aggregate values or `L1`, `L2`, etc. for per-phase readings.
+
+**Common queries:**
+```promql
+# Grid import (energy received by net meter)
+enphase_meter_energy_received_wh{measurement_type="net-consumption",phase="total"}
+
+# Grid export (energy delivered by net meter)
+enphase_meter_energy_delivered_wh{measurement_type="net-consumption",phase="total"}
+
+# Solar production (energy delivered by production meter)
+enphase_meter_energy_delivered_wh{measurement_type="production",phase="total"}
+```
 
 ### Exporter Metrics
 
