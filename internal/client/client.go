@@ -194,6 +194,27 @@ func (c *Client) GetMeterReadings() (*MeterReadingsResponse, error) {
 	return &result, nil
 }
 
+// GetMeters fetches meter metadata from the gateway.
+func (c *Client) GetMeters() (*MetersResponse, error) {
+	if err := c.ensureAuthenticated(); err != nil {
+		return nil, err
+	}
+
+	url := c.config.Address + EndpointMeters
+	resp, err := c.doRequest("GET", url)
+	if err != nil {
+		return nil, fmt.Errorf("meters metadata request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var result MetersResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode meters response: %w", err)
+	}
+
+	return &result, nil
+}
+
 // GetInverters fetches inverter data from the gateway.
 func (c *Client) GetInverters() (*InvertersResponse, error) {
 	if err := c.ensureAuthenticated(); err != nil {
