@@ -16,6 +16,7 @@ type mockClient struct {
 	consumptionReport *client.ConsumptionReportResponse
 	inverters         *client.InvertersResponse
 	meterReadings     *client.MeterReadingsResponse
+	meters            *client.MetersResponse
 	err               error
 }
 
@@ -33,6 +34,10 @@ func (m *mockClient) GetInverters() (*client.InvertersResponse, error) {
 
 func (m *mockClient) GetMeterReadings() (*client.MeterReadingsResponse, error) {
 	return m.meterReadings, m.err
+}
+
+func (m *mockClient) GetMeters() (*client.MetersResponse, error) {
+	return m.meters, m.err
 }
 
 func TestProductionCollector(t *testing.T) {
@@ -177,6 +182,16 @@ func TestMetersCollector(t *testing.T) {
 				},
 			},
 		},
+		meters: &client.MetersResponse{
+			{
+				Eid:             12345,
+				State:           "enabled",
+				MeasurementType: "production",
+				PhaseMode:       "split",
+				PhaseCount:      2,
+				MeteringStatus:  "normal",
+			},
+		},
 	}
 
 	collector := NewMetersCollector(mock)
@@ -185,7 +200,7 @@ func TestMetersCollector(t *testing.T) {
 	expected := `
 		# HELP enphase_frequency_hz Grid frequency in Hz
 		# TYPE enphase_frequency_hz gauge
-		enphase_frequency_hz{meter_id="12345"} 60
+		enphase_frequency_hz{measurement_type="production",meter_id="12345"} 60
 	`
 	if err := testutil.CollectAndCompare(collector, strings.NewReader(expected), "enphase_frequency_hz"); err != nil {
 		t.Errorf("frequency mismatch: %v", err)
@@ -195,9 +210,9 @@ func TestMetersCollector(t *testing.T) {
 	expectedVoltage := `
 		# HELP enphase_voltage_volts Grid voltage in volts
 		# TYPE enphase_voltage_volts gauge
-		enphase_voltage_volts{meter_id="12345",phase="total"} 240.5
-		enphase_voltage_volts{meter_id="12345",phase="L1"} 120.2
-		enphase_voltage_volts{meter_id="12345",phase="L2"} 120.3
+		enphase_voltage_volts{measurement_type="production",meter_id="12345",phase="total"} 240.5
+		enphase_voltage_volts{measurement_type="production",meter_id="12345",phase="L1"} 120.2
+		enphase_voltage_volts{measurement_type="production",meter_id="12345",phase="L2"} 120.3
 	`
 	if err := testutil.CollectAndCompare(collector, strings.NewReader(expectedVoltage), "enphase_voltage_volts"); err != nil {
 		t.Errorf("voltage mismatch: %v", err)
@@ -211,6 +226,7 @@ func TestCollector_NilData(t *testing.T) {
 		consumptionReport: nil,
 		inverters:         nil,
 		meterReadings:     nil,
+		meters:            nil,
 	}
 
 	prodCollector := NewProductionCollector(mock)

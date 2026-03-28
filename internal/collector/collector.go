@@ -7,5 +7,6 @@ type EnphaseClient interface {
 	GetProductionReport() (*client.ProductionReportResponse, error)
 	GetConsumptionReport() (*client.ConsumptionReportResponse, error)
 	GetMeterReadings() (*client.MeterReadingsResponse, error)
+	GetMeters() (*client.MetersResponse, error)
 	GetInverters() (*client.InvertersResponse, error)
 }

@@ -74,6 +74,20 @@ type MeterChannel struct {
 	Freq              float64 `json:"freq"`
 }
 
+// MetersResponse represents the response from /ivp/meters
+type MetersResponse []Meter
+
+// Meter represents meter metadata from /ivp/meters
+type Meter struct {
+	Eid             int64    `json:"eid"`
+	State           string   `json:"state"`
+	MeasurementType string   `json:"measurementType"`
+	PhaseMode       string   `json:"phaseMode"`
+	PhaseCount      int      `json:"phaseCount"`
+	MeteringStatus  string   `json:"meteringStatus"`
+	StatusFlags     []string `json:"statusFlags"`
+}
+
 // InvertersResponse represents the response from /api/v1/production/inverters
 type InvertersResponse []Inverter
 
