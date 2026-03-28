@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/rhwendt/enphase-exporter/compare/v1.4.0...v1.5.0) (2026-03-28)
+
+
+### Features
+
+* Add measurement_type label to meter metrics ([#24](https://github.com/rhwendt/enphase-exporter/issues/24)) ([e663ee1](https://github.com/rhwendt/enphase-exporter/commit/e663ee17101ccc692b5beb01a34659caaf5ad34c))
+
 ## [1.4.0](https://github.com/rhwendt/enphase-exporter/compare/v1.3.0...v1.4.0) (2026-01-28)
 
 
