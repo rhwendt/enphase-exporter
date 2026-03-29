@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -30,6 +31,14 @@ type ProductionCollector struct {
 
 	// Net (production - consumption)
 	netWatts *prometheus.Desc
+
+	// Grid import/export accumulators
+	gridExportWhTotal *prometheus.Desc
+	gridImportWhTotal *prometheus.Desc
+	gridExportAccum   float64
+	gridImportAccum   float64
+	lastScrapeTime    time.Time
+	mu                sync.Mutex
 }
 
 // NewProductionCollector creates a new ProductionCollector.
@@ -87,6 +96,20 @@ func NewProductionCollector(client EnphaseClient) *ProductionCollector {
 			nil,
 			nil,
 		),
+		// Grid import/export accumulators
+		gridExportWhTotal: prometheus.NewDesc(
+			"enphase_grid_export_wh_total",
+			"Cumulative energy exported to grid in Wh (resets on restart)",
+			nil,
+			nil,
+		),
+		gridImportWhTotal: prometheus.NewDesc(
+			"enphase_grid_import_wh_total",
+			"Cumulative energy imported from grid in Wh (resets on restart)",
+			nil,
+			nil,
+		),
+		lastScrapeTime: time.Now(),
 	}
 }
 
@@ -103,6 +126,8 @@ func (c *ProductionCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.consumptionWhTotal
 	// Net
 	ch <- c.netWatts
+	ch <- c.gridExportWhTotal
+	ch <- c.gridImportWhTotal
 }
 
 // Collect implements prometheus.Collector.
@@ -208,9 +233,36 @@ func (c *ProductionCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	// Net power (positive = exporting to grid, negative = importing from grid)
+	netWatts := prod.CurrW - totalConsumptionW
 	ch <- prometheus.MustNewConstMetric(
 		c.netWatts,
 		prometheus.GaugeValue,
-		prod.CurrW-totalConsumptionW,
+		netWatts,
+	)
+
+	// Accumulate grid import/export energy based on instantaneous net power
+	c.mu.Lock()
+	elapsed := time.Since(c.lastScrapeTime).Seconds()
+	if elapsed > 0 && elapsed < 300 {
+		if netWatts > 0 {
+			c.gridExportAccum += netWatts * elapsed / 3600
+		} else if netWatts < 0 {
+			c.gridImportAccum += (-netWatts) * elapsed / 3600
+		}
+	}
+	c.lastScrapeTime = time.Now()
+	exportAccum := c.gridExportAccum
+	importAccum := c.gridImportAccum
+	c.mu.Unlock()
+
+	ch <- prometheus.MustNewConstMetric(
+		c.gridExportWhTotal,
+		prometheus.CounterValue,
+		exportAccum,
+	)
+	ch <- prometheus.MustNewConstMetric(
+		c.gridImportWhTotal,
+		prometheus.CounterValue,
+		importAccum,
 	)
 }
