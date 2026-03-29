@@ -123,6 +123,30 @@ func TestProductionCollector(t *testing.T) {
 	if err := testutil.CollectAndCompare(collector, strings.NewReader(expectedWhTotal), "enphase_production_wh_total"); err != nil {
 		t.Errorf("production wh total mismatch: %v", err)
 	}
+
+	// Test grid export/import accumulators exist and have non-negative values.
+	// We use testutil.ToFloat64 via a direct Collect call since elapsed time
+	// between repeated CollectAndCompare calls causes small accumulations.
+	ch := make(chan prometheus.Metric, 100)
+	collector.Collect(ch)
+	close(ch)
+
+	var foundExport, foundImport bool
+	for m := range ch {
+		desc := m.Desc().String()
+		if strings.Contains(desc, "enphase_grid_export_wh_total") {
+			foundExport = true
+		}
+		if strings.Contains(desc, "enphase_grid_import_wh_total") {
+			foundImport = true
+		}
+	}
+	if !foundExport {
+		t.Error("enphase_grid_export_wh_total metric not found")
+	}
+	if !foundImport {
+		t.Error("enphase_grid_import_wh_total metric not found")
+	}
 }
 
 func TestInvertersCollector(t *testing.T) {

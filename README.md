@@ -46,6 +46,8 @@ The `measurement_type` label distinguishes:
 | Metric | Description | Labels |
 |--------|-------------|--------|
 | `enphase_net_watts` | Net power (production - consumption). Positive = exporting, negative = importing | - |
+| `enphase_grid_export_wh_total` | Cumulative energy exported to grid in Wh (resets on restart) | - |
+| `enphase_grid_import_wh_total` | Cumulative energy imported from grid in Wh (resets on restart) | - |
 
 ### Per-Inverter Metrics
 
