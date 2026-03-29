@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/rhwendt/enphase-exporter/compare/v1.5.0...v1.6.0) (2026-03-29)
+
+
+### Features
+
+* Add grid import/export accumulator counters ([#26](https://github.com/rhwendt/enphase-exporter/issues/26)) ([53d0a46](https://github.com/rhwendt/enphase-exporter/commit/53d0a46e2a5aa5d84e1c112f98d2552970192a12))
+
 ## [1.5.0](https://github.com/rhwendt/enphase-exporter/compare/v1.4.0...v1.5.0) (2026-03-28)
 
 
